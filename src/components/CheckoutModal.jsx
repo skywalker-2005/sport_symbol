@@ -1,11 +1,10 @@
-export default function CheckoutModal({ isOpen, onClose, onSubmit, status }) {
+export default function CheckoutModal({ isOpen, onClose, onSubmit, status, email, busy }) {
   if (!isOpen) return null;
 
   function handleSubmit(event) {
     event.preventDefault();
-    onSubmit(
-      "Спасибо! Это демонстрационная форма. Для приёма реальных заказов подключите сервер и обработчик заявок.",
-    );
+    const form = new FormData(event.currentTarget);
+    onSubmit({ name: form.get("name"), phone: form.get("phone") });
   }
 
   return (
@@ -39,9 +38,8 @@ export default function CheckoutModal({ isOpen, onClose, onSubmit, status }) {
           <em>заказа</em>
         </h2>
         <p>
-          Оставьте контакты — менеджер уточнит наличие, персонализацию и
-          стоимость доставки. Это демо-форма: заказ и оплата пока не
-          отправляются.
+          Укажите имя и телефон. Данные заказа и актуальные цены проверяются
+          сервером перед переходом к безопасной оплате.
         </p>
         <form className="checkout-form" onSubmit={handleSubmit}>
           <label>
@@ -64,19 +62,13 @@ export default function CheckoutModal({ isOpen, onClose, onSubmit, status }) {
             />
           </label>
           <label>
-            Электронная почта
-            <input
-              name="email"
-              type="email"
-              autoComplete="email"
-              placeholder="name@example.ru"
-              required
-            />
+            Электронная почта аккаунта
+            <input value={email || ""} readOnly />
           </label>
-          <button className="button button--red button--full" type="submit">
-            Запросить подтверждение <span>↗</span>
+          <button className="button button--red button--full" type="submit" disabled={busy}>
+            {busy ? "Создаём платёж…" : <>Перейти к оплате <span>↗</span></>}
           </button>
-          <p className="form-status" role="status" aria-live="polite">
+          <p className="form-status form-status--error" role="status" aria-live="polite">
             {status}
           </p>
         </form>

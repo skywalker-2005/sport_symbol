@@ -24,7 +24,7 @@ const navigation = [
   ["Контакты", "#contacts"],
 ];
 
-export default function SiteHeader({ cartCount, onOpenCart }) {
+export default function SiteHeader({ cartCount, onOpenCart, user, onOpenAuth, onOpenAdmin, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   function closeMenu() {
@@ -74,6 +74,18 @@ export default function SiteHeader({ cartCount, onOpenCart }) {
             <a className="header__phone" href="tel:+78005553535">
               8 800 555-35-35
             </a>
+            {user ? (
+              <>
+                {user.role === "admin" && (
+                  <button className="account-button" type="button" onClick={onOpenAdmin}>Админ</button>
+                )}
+                <button className="account-button account-button--user" type="button" onClick={onLogout} title="Выйти">
+                  <span className="account-button__email">{user.email}</span><span>Выйти</span>
+                </button>
+              </>
+            ) : (
+              <button className="account-button" type="button" onClick={onOpenAuth}>Войти</button>
+            )}
             <button
               className="cart-button"
               type="button"

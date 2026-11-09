@@ -417,3 +417,68 @@ button { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+.account-button { min-height: 38px; padding: 0 11px; border: 1px solid var(--line); border-radius: 3px; background: #fff; font-size: 10px; font-weight: 800; cursor: pointer; }
+.account-button:hover { border-color: var(--red); color: var(--red); }
+.account-button--user { display: flex; flex-direction: column; justify-content: center; gap: 2px; max-width: 180px; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.account-button--user span { color: #88817b; font-size: 8px; }
+.form-status--error { color: #b3261e; }
+.auth-switch { display: block; margin: 14px auto 0; padding: 6px; border: 0; color: #625c56; background: transparent; font-size: 10px; text-decoration: underline; cursor: pointer; }
+.auth-modal h2 { font-size: clamp(25px,4vw,32px); }
+.admin-overlay { z-index: 70; }
+.admin-panel { position: relative; z-index: 1; width: min(1000px,calc(100% - 32px)); max-height: calc(100vh - 32px); display: flex; flex-direction: column; background: #fff; box-shadow: 0 20px 80px rgba(0,0,0,.2); animation: modal-in .25s ease both; }
+.admin-panel__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 26px 30px 19px; border-bottom: 1px solid var(--line); }
+.admin-panel__header .eyebrow { margin-bottom: 8px; }
+.admin-panel__header h2 { margin: 0; font: 500 clamp(20px,3vw,27px) var(--display); letter-spacing: -.06em; }
+.admin-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 12px 30px; border-bottom: 1px solid var(--line); }
+.admin-tabs button { flex: 0 0 auto; padding: 10px 12px; border: 1px solid transparent; background: #fff; color: #625c56; font-size: 10px; font-weight: 800; cursor: pointer; }
+.admin-tabs button.is-active { border-color: #efc5c2; color: var(--red); background: #fff8f7; }
+.admin-panel__content { overflow: auto; padding: 20px 30px 28px; }
+.admin-panel__content h3 { margin: 0 0 13px; font: 500 17px var(--display); }
+.admin-panel__content h3 small { color: #827a73; font: 400 10px var(--body); }
+.admin-products, .admin-carts { display: grid; gap: 8px; }
+.admin-product { display: grid; grid-template-columns: minmax(0,1fr) 130px 105px; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid #eeece8; }
+.admin-product > span { display: grid; gap: 4px; }
+.admin-product b, .admin-customer b { font-size: 11px; }
+.admin-product small, .admin-customer > small { color: #827a73; font-size: 9px; line-height: 1.5; }
+.admin-price { display: flex; align-items: center; gap: 6px; }
+.admin-price input { width: 100%; min-width: 0; height: 36px; padding: 7px; border: 1px solid #e8e5e0; }
+.admin-product .button, .admin-add-product .button, .admin-payment-form .button { min-height: 36px; gap: 8px; padding: 0 11px; font-size: 9px; }
+.admin-subheading { margin-top: 25px !important; }
+.admin-add-product { padding: 16px; background: #f8f7f4; }
+.admin-add-product label, .admin-payment-form label { font-size: 10px; }
+.admin-add-product input, .admin-add-product select, .admin-payment-form input { width: 100%; min-height: 38px; padding: 8px 10px; border: 1px solid #e8e5e0; background: #fff; font-size: 10px; }
+.admin-form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.admin-customer { display: grid; gap: 6px; padding: 13px; border: 1px solid #eeece8; }
+.admin-customer ul { display: grid; gap: 6px; margin: 2px 0 0; padding-left: 17px; color: #524d48; font-size: 10px; line-height: 1.5; }
+.admin-customer li small { display: block; color: #827a73; font-size: 9px; }
+.admin-customer p { margin: 0; color: #827a73; font-size: 10px; }
+.admin-help { color: #6f6963; font-size: 10px; line-height: 1.7; }
+.admin-help code { overflow-wrap: anywhere; color: var(--ink); }
+.admin-payment-state { display: inline-block; padding: 7px 10px; color: #8a5018; background: #fff3e3; font-size: 10px; }
+.admin-payment-state.is-ready { color: #286637; background: #eaf5ec; }
+.admin-payment-form { max-width: 560px; margin: 17px 0; }
+
+@media (max-width: 900px) {
+  .header__actions { gap: 9px; }
+  .header__phone { display: none; }
+}
+@media (max-width: 600px) {
+  .account-button { min-height: 34px; padding: 0 8px; font-size: 9px; }
+  .account-button--user { max-width: 110px; }
+  .admin-panel { width: calc(100% - 18px); max-height: calc(100vh - 18px); }
+  .admin-panel__header { padding: 18px 16px 14px; }
+  .admin-tabs { padding: 9px 12px; }
+  .admin-panel__content { padding: 15px 13px 22px; }
+  .admin-product { grid-template-columns: minmax(0,1fr) 80px; gap: 8px; }
+  .admin-product .button { grid-column: 1 / -1; width: 100%; }
+  .admin-form-row { grid-template-columns: 1fr; gap: 0; }
+  .auth-modal { width: min(460px,100%); }
+}
+@media (max-width: 760px) {
+  .header__inner { gap: 7px; }
+  .header__actions { gap: 5px; }
+  .account-button { padding: 0 7px; font-size: 8px; }
+  .account-button__email { display: none; }
+  .account-button--user { max-width: 62px; }
+}

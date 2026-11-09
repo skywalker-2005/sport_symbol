@@ -6,6 +6,7 @@ export default function CartDrawer({
   items,
   count,
   total,
+  isAuthenticated,
   onClose,
   onChangeQuantity,
   onRemove,
@@ -114,7 +115,7 @@ export default function CartDrawer({
               <span>Итого</span>
               <b>{formatPrice(total)}</b>
             </div>
-            <p>Стоимость и наличие подтвердим при согласовании заказа.</p>
+            <p>Перед оплатой сервер повторно проверит цены и состав заказа.</p>
             <button
               className="button button--red button--full"
               type="button"
@@ -123,7 +124,7 @@ export default function CartDrawer({
               Перейти к оформлению <span>↗</span>
             </button>
             <span className="cart-demo-note">
-              Оплата онлайн пока не подключена.
+              {isAuthenticated ? "Безопасный переход к оплате через ЮKassa." : "Войдите, чтобы сохранить корзину и оформить заказ."}
             </span>
           </div>
         )}

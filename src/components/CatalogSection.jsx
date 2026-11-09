@@ -23,6 +23,7 @@ function SearchIcon() {
 }
 
 export default function CatalogSection({
+  products,
   quantities,
   onAdd,
   onNotify,
@@ -41,7 +42,7 @@ export default function CatalogSection({
         );
       return matchesCategory && searchableText.includes(query);
     });
-  }, [activeCategory, search]);
+  }, [activeCategory, products, search]);
 
   function addProduct(id) {
     onAdd(id);
