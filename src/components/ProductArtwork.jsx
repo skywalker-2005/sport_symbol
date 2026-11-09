@@ -1,6 +1,6 @@
 const illustrations = {
   cup: `<path d="M45 22h50l-5 41c-2 18-11 30-20 36-9-6-18-18-20-36l-5-41Z" fill="url(#gold)" stroke="#fff1cd" stroke-width="2"/><path d="M46 32H29c0 24 6 35 23 39m59-39h-17c0 24-6 35-23 39" fill="none" stroke="url(#gold)" stroke-width="9" stroke-linecap="round"/><path d="M64 99h13l6 23H58l6-23Zm-17 23h47l9 15H38l9-15Z" fill="url(#gold)" stroke="#fff1cd" stroke-width="2"/><path d="M39 137h61v10H39z" fill="#a76b21"/><path d="m70 39 5 10 11 2-8 7 2 11-10-5-10 5 2-11-8-7 11-2 5-10Z" fill="#fff5d5"/>`,
-  ball: `<path d="M50 30h40l-4 34c-2 16-10 27-16 31-7-5-15-16-17-31l-3-34Z" fill="url(#gold)" stroke="#fff1cd" stroke-width="2"/><circle cx="70" cy="55" r="17" fill="#f3f1ea" stroke="#a87532" stroke-width="2"/><path d="m70 41 7 5-3 8h-8l-3-8 7-5Zm-15 12 8 3 2 8-7 4-6-5 3-10Zm29 0-3 10-7 4-2-7 4-8 8 1Zm-25 16 8-4 7 4-1 8-8 3-6-5Zm23 0 6-5 6 5-1 8-8 2-3-10Z" fill="#252624"/><path d="M62 96h16l5 23H57l5-23Zm-16 23h48l8 14H38l8-14Z" fill="url(#gold)" stroke="#fff1cd" stroke-width="2"/><path d="M39 133h62v12H39z" fill="#aa7229"/>`,
+  ball: `<path d="M50 30h40l-4 34c-2 16-10 27-16 31-7-5-15-16-17-31l-3-34Z" fill="url(#gold)" stroke="#fff1cd" stroke-width="2"/><path d="M51 40H38c0 15 4 24 15 28m36-28h13c0 15-4 24-15 28" fill="none" stroke="url(#gold)" stroke-width="6" stroke-linecap="round"/><circle cx="70" cy="55" r="17" fill="#f3f1ea" stroke="#a87532" stroke-width="2"/><g clip-path="url(#ball-clip-id)"><path d="m70 41 7 5-3 8h-8l-3-8 7-5Zm-15 12 8 3 2 8-7 4-6-5 3-10Zm29 0-3 10-7 4-2-7 4-8 8 1Zm-25 16 8-4 7 4-1 8-8 3-6-5Zm23 0 6-5 6 5-1 8-8 2-3-10Z" fill="#252624"/></g><path d="M62 96h16l5 23H57l5-23Zm-16 23h48l8 14H38l8-14Z" fill="url(#gold)" stroke="#fff1cd" stroke-width="2"/><path d="M39 133h62v12H39z" fill="#aa7229"/>`,
   glass: `<path d="M45 23h50l-7 42-18 25-18-25-7-42Z" fill="rgba(255,255,255,.48)" stroke="#fff" stroke-width="3"/><path d="M53 30h34l-5 31-13 19-13-19-3-31Z" fill="rgba(237,249,250,.48)" stroke="#a7c7cb" stroke-width="2"/><path d="M65 91h12v29H65z" fill="#b9d1d2" stroke="#fff" stroke-width="2"/><path d="M53 119h36l9 15H44l9-15Z" fill="url(#gold)" stroke="#fff1cd" stroke-width="2"/><path d="M42 134h58v11H42z" fill="#4c686b"/><path d="m70 39 3 8 9 1-7 6 2 9-7-4-7 4 1-9-6-6 9-1 3-8Z" fill="#fff"/>`,
   star: `<path d="m70 20 14 29 32 5-23 22 6 32-29-15-29 15 6-32-23-22 32-5 14-29Z" fill="url(#gold)" stroke="#fff1cd" stroke-width="2"/><circle cx="70" cy="70" r="18" fill="#f8e9c2" stroke="#bd8c3d" stroke-width="2"/><path d="m70 56 4 9 10 1-7 7 2 10-9-5-9 5 2-10-7-7 10-1 4-9Z" fill="#d0a04e"/><path d="M61 108h18l6 20H55l6-20Z" fill="url(#gold)" stroke="#fff1cd" stroke-width="2"/><path d="M49 128h42v12H49z" fill="#a76b21"/>`,
   medal: `<path d="m49 18 21 24 21-24-9 42H58l-9-42Z" fill="url(#gold)" stroke="#fff1cd" stroke-width="2"/><circle cx="70" cy="88" r="33" fill="url(#gold)" stroke="#fff4d0" stroke-width="3"/><circle cx="70" cy="88" r="25" fill="none" stroke="#b57f2c" stroke-width="2"/><path d="m70 68 6 12 13 2-10 9 3 13-12-7-12 7 2-13-9-9 13-2 6-12Z" fill="#fff5d2"/><path d="M70 121v19m-14-1h28v8H56z" fill="#8e642d"/>`,
@@ -14,6 +14,14 @@ const illustrations = {
 };
 
 export default function ProductArtwork({ type, id, className = "product-card__art" }) {
+  const safeId = String(id).replace(/[^a-zA-Z0-9_-]/g, "");
+  const goldId = `gold-${safeId}`;
+  const ballClipId = `ball-clip-${safeId}`;
+  const artwork = illustrations[type] || illustrations.star;
+  const markup = artwork
+    .replaceAll("url(#gold)", `url(#${goldId})`)
+    .replaceAll("url(#ball-clip-id)", `url(#${ballClipId})`);
+
   return (
     <svg
       className={className}
@@ -24,8 +32,11 @@ export default function ProductArtwork({ type, id, className = "product-card__ar
       focusable="false"
     >
       <defs>
+        <clipPath id={ballClipId}>
+          <circle cx="70" cy="55" r="17" />
+        </clipPath>
         <linearGradient
-          id={`gold-${id}`}
+          id={goldId}
           x1="38"
           y1="18"
           x2="103"
@@ -38,10 +49,7 @@ export default function ProductArtwork({ type, id, className = "product-card__ar
           <stop offset="1" stopColor="#a87127" />
         </linearGradient>
       </defs>
-      <g
-        transform="translate(0 5)"
-        dangerouslySetInnerHTML={{ __html: illustrations[type] || illustrations.star }}
-      />
+      <g dangerouslySetInnerHTML={{ __html: markup }} />
     </svg>
   );
 }
