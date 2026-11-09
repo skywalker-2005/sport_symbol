@@ -1,3 +1,5 @@
+import UiIcon from "./UiIcon.jsx";
+
 export default function CheckoutModal({ isOpen, onClose, onSubmit, status, email, busy }) {
   if (!isOpen) return null;
 
@@ -27,7 +29,7 @@ export default function CheckoutModal({ isOpen, onClose, onSubmit, status, email
           onClick={onClose}
           aria-label="Закрыть оформление"
         >
-          ×
+          <UiIcon name="close" />
         </button>
         <p className="eyebrow">
           <span /> ПОСЛЕДНИЙ ШАГ
@@ -66,7 +68,7 @@ export default function CheckoutModal({ isOpen, onClose, onSubmit, status, email
             <input value={email || ""} readOnly />
           </label>
           <button className="button button--red button--full" type="submit" disabled={busy}>
-            {busy ? "Создаём платёж…" : <>Перейти к оплате <span>↗</span></>}
+            {busy ? "Создаём платёж…" : <>Перейти к оплате <span><UiIcon name="arrow-up-right" /></span></>}
           </button>
           <p className="form-status form-status--error" role="status" aria-live="polite">
             {status}

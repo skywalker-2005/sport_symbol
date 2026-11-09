@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { categories } from "../data/products.js";
 import { apiRequest } from "../utils/api.js";
 import { formatPrice } from "../utils.js";
+import UiIcon from "./UiIcon.jsx";
 
 const tabs = [
   ["products", "Товары и цены"],
@@ -125,7 +126,7 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
             <p className="eyebrow"><span /> УПРАВЛЕНИЕ МАГАЗИНОМ</p>
             <h2 id="admin-title">Панель администратора</h2>
           </div>
-          <button className="icon-button" type="button" onClick={onClose} aria-label="Закрыть">×</button>
+          <button className="icon-button" type="button" onClick={onClose} aria-label="Закрыть"><UiIcon name="close" /></button>
         </header>
         <nav className="admin-tabs" aria-label="Разделы панели">
           {tabs.map(([id, label]) => (

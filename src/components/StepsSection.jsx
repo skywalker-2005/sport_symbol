@@ -1,8 +1,10 @@
+import UiIcon from "./UiIcon.jsx";
+
 const steps = [
-  ["⌕", "Выбираете", "Находите награду в каталоге или описываете свою идею."],
-  ["✳", "Согласуем", "Обсуждаем тираж, сроки и персонализацию наград."],
-  ["↗", "Изготавливаем", "Подготавливаем заказ и держим вас в курсе."],
-  ["★", "Отмечаете", "Вручаете награду за любой важный результат."],
+  ["search", "Выбираете", "Находите награду в каталоге или описываете свою идею."],
+  ["sparkle", "Согласуем", "Обсуждаем тираж, сроки и персонализацию наград."],
+  ["arrow-up-right", "Изготавливаем", "Подготавливаем заказ и держим вас в курсе."],
+  ["star", "Отмечаете", "Вручаете награду за любой важный результат."],
 ];
 
 export default function StepsSection() {
@@ -23,7 +25,7 @@ export default function StepsSection() {
           {steps.map(([icon, title, description], index) => (
             <article className="step" key={title}>
               <span>{String(index + 1).padStart(2, "0")}</span>
-              <div className="step__icon">{icon}</div>
+              <div className="step__icon"><UiIcon name={icon} /></div>
               <h3>{title}</h3>
               <p>{description}</p>
             </article>

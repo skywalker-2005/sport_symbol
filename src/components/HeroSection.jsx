@@ -1,3 +1,5 @@
+import UiIcon from "./UiIcon.jsx";
+
 export default function HeroSection() {
   return (
     <section className="hero" id="home">
@@ -18,10 +20,10 @@ export default function HeroSection() {
           </p>
           <div className="hero__buttons">
             <a className="button button--light" href="#catalog">
-              Выбрать награды <span aria-hidden="true">↗</span>
+              Выбрать награды <span><UiIcon name="arrow-up-right" /></span>
             </a>
             <a className="hero__link" href="#about">
-              Узнать о нас <span aria-hidden="true">↓</span>
+              Узнать о нас <span><UiIcon name="arrow-down" /></span>
             </a>
           </div>
           <div className="hero__proof">
@@ -47,8 +49,8 @@ export default function HeroSection() {
         <div className="hero-art" aria-label="Иллюстрация спортивного кубка">
           <div className="hero-art__orbit hero-art__orbit--one" />
           <div className="hero-art__orbit hero-art__orbit--two" />
-          <span className="hero-art__star hero-art__star--one">✳</span>
-          <span className="hero-art__star hero-art__star--two">✦</span>
+          <span className="hero-art__star hero-art__star--one"><UiIcon name="sparkle" /></span>
+          <span className="hero-art__star hero-art__star--two"><UiIcon name="star" /></span>
           <div className="hero-art__label">
             <span>01</span> ВАШЕ
             <br />
@@ -162,7 +164,7 @@ export default function HeroSection() {
         <span className="hero__bottom-line" />
         <span>РЕКОРДЫ, СТАРАНИЕ И КАЖДЫЙ ШАГ ВПЕРЁД</span>
         <a href="#catalog" aria-label="Листайте к ассортименту">
-          ↓
+          <UiIcon name="arrow-down" />
         </a>
       </div>
     </section>

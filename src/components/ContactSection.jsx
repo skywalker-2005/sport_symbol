@@ -1,3 +1,5 @@
+import UiIcon from "./UiIcon.jsx";
+
 export default function ContactSection({ onSubmit, status }) {
   function handleSubmit(event) {
     event.preventDefault();
@@ -24,7 +26,7 @@ export default function ContactSection({ onSubmit, status }) {
             для любого результата.
           </p>
           <a className="contact__phone" href="tel:+78005553535">
-            8 800 555-35-35 <span>↗</span>
+            8 800 555-35-35 <span><UiIcon name="arrow-up-right" /></span>
           </a>
           <p className="contact__hours">
             Ежедневно, 9:00–18:00 · время московское
@@ -54,7 +56,7 @@ export default function ContactSection({ onSubmit, status }) {
             />
           </label>
           <button className="button button--light" type="submit">
-            Отправить заявку <span>↗</span>
+            Отправить заявку <span><UiIcon name="arrow-up-right" /></span>
           </button>
           <p className="contact-form__note">
             Нажимая кнопку, вы соглашаетесь на обработку персональных данных.

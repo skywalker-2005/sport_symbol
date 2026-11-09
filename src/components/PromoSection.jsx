@@ -1,3 +1,5 @@
+import UiIcon from "./UiIcon.jsx";
+
 export default function PromoSection() {
   return (
     <section className="promo section" id="offers">
@@ -17,20 +19,20 @@ export default function PromoSection() {
               подберём медали и кубки в одном стиле.
             </p>
             <a className="button button--light" href="#contacts">
-              Обсудить комплект <span>↗</span>
+              Обсудить комплект <span><UiIcon name="arrow-up-right" /></span>
             </a>
           </div>
           <div className="promo-card__visual" aria-hidden="true">
             <span className="promo-card__ring" />
             <span className="promo-card__medal">
-              <b>★</b>
+              <b><UiIcon name="star" /></b>
               <i>МОЙ РЕКОРД</i>
             </span>
             <span className="promo-card__medal promo-card__medal--small">
-              <b>✳</b>
+              <b><UiIcon name="sparkle" /></b>
               <i>МОЙ ШАГ</i>
             </span>
-            <span className="promo-card__spark">✳</span>
+            <span className="promo-card__spark"><UiIcon name="sparkle" /></span>
             <span className="promo-card__sticker">
               ВАШЕ
               <br />

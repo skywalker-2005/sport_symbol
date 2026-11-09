@@ -1,8 +1,10 @@
+import UiIcon from "./UiIcon.jsx";
+
 const benefits = [
-  ["✳", "Для любого повода", "Рекорды, старание, участие"],
-  ["⌁", "Персонализация", "Нанесём логотип и надпись"],
-  ["◷", "Сроки заранее", "Согласуем дату изготовления"],
-  ["↗", "Помощь с выбором", "Подберём тираж и комплект"],
+  ["sparkle", "Для любого повода", "Рекорды, старание, участие"],
+  ["pencil", "Персонализация", "Нанесём логотип и надпись"],
+  ["clock", "Сроки заранее", "Согласуем дату изготовления"],
+  ["arrow-up-right", "Помощь с выбором", "Подберём тираж и комплект"],
 ];
 
 export default function BenefitsSection() {
@@ -11,7 +13,7 @@ export default function BenefitsSection() {
       <div className="container benefits__grid">
         {benefits.map(([icon, title, description]) => (
           <div className="benefit" key={title}>
-            <span className="benefit__icon">{icon}</span>
+            <span className="benefit__icon"><UiIcon name={icon} /></span>
             <p>
               <b>{title}</b>
               <br />

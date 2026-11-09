@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Brand from "./Brand.jsx";
+import UiIcon from "./UiIcon.jsx";
 
 function CartIcon() {
   return (
@@ -36,11 +37,11 @@ export default function SiteHeader({ cartCount, onOpenCart, user, onOpenAuth, on
       <div className="announcement">
         <div className="container announcement__inner">
           <span className="announcement__spark" aria-hidden="true">
-            ✳
+            <UiIcon name="sparkle" />
           </span>
           <p>Каждое достижение заслуживает внимания</p>
           <a href="#catalog">
-            Подобрать награды <span aria-hidden="true">↗</span>
+            Подобрать награды <span><UiIcon name="arrow-up-right" /></span>
           </a>
         </div>
       </div>

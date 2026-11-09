@@ -33,8 +33,10 @@ export async function db() {
           email TEXT NOT NULL UNIQUE,
           password_hash TEXT NOT NULL,
           role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('admin', 'customer')),
+          email_verified BOOLEAN NOT NULL DEFAULT TRUE,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT TRUE;
         CREATE TABLE IF NOT EXISTS products (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
@@ -80,6 +82,18 @@ export async function db() {
           attempts INTEGER NOT NULL,
           reset_at TIMESTAMPTZ NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS auth_codes (
+          id UUID PRIMARY KEY,
+          email TEXT NOT NULL,
+          purpose TEXT NOT NULL CHECK (purpose IN ('verify-email', 'reset-password')),
+          code_hash TEXT NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          expires_at TIMESTAMPTZ NOT NULL,
+          used_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS auth_codes_email_purpose_idx
+          ON auth_codes(email, purpose, created_at DESC);
         CREATE INDEX IF NOT EXISTS cart_items_user_idx ON cart_items(user_id);
         CREATE INDEX IF NOT EXISTS orders_user_idx ON orders(user_id, created_at DESC);
         CREATE UNIQUE INDEX IF NOT EXISTS orders_user_idempotency_idx
@@ -232,6 +246,48 @@ export async function verifyPassword(password, encoded) {
   const expected = Buffer.from(hashHex, "hex");
   const actual = await scrypt(password, Buffer.from(saltHex, "hex"), expected.length);
   return expected.length === actual.length && timingSafeEqual(expected, actual);
+}
+
+export function authCodeHash(email, purpose, code) {
+  return createHmac("sha256", jwtSecret()).update(`${email}:${purpose}:${code}`).digest("hex");
+}
+
+export function verifyAuthCodeHash(email, purpose, code, encoded) {
+  const expected = Buffer.from(encoded, "hex");
+  const actual = Buffer.from(authCodeHash(email, purpose, code), "hex");
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
+}
+
+export async function sendAuthCodeEmail(email, code, purpose) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  if (!apiKey || !from) {
+    throw Object.assign(new Error("Отправка почты не настроена. Обратитесь к администратору."), { status: 503 });
+  }
+  const isVerification = purpose === "verify-email";
+  let response;
+  try {
+    response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [email],
+        subject: isVerification ? "Подтверждение почты — Символ Спорта" : "Восстановление пароля — Символ Спорта",
+        text: `${isVerification ? "Код подтверждения почты" : "Код для восстановления пароля"}: ${code}. Код действует 10 минут.`,
+        html: `<p>${isVerification ? "Код подтверждения почты" : "Код для восстановления пароля"}:</p><p style="font-size:28px;font-weight:bold;letter-spacing:8px">${code}</p><p>Код действует 10 минут. Если вы не запрашивали это письмо, просто проигнорируйте его.</p>`,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    throw Object.assign(new Error("Не удалось отправить письмо. Попробуйте ещё раз позже."), { status: 502 });
+  }
+  if (!response.ok) {
+    throw Object.assign(new Error("Почтовый сервис не принял письмо. Попробуйте ещё раз позже."), { status: 502 });
+  }
 }
 
 export async function enforceRateLimit(database, key) {

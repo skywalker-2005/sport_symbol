@@ -1,4 +1,5 @@
 import ProductArtwork from "./ProductArtwork.jsx";
+import UiIcon from "./UiIcon.jsx";
 import { formatPrice } from "../utils.js";
 
 export default function CartDrawer({
@@ -43,7 +44,7 @@ export default function CartDrawer({
             onClick={onClose}
             aria-label="Закрыть корзину"
           >
-            ×
+            <UiIcon name="close" />
           </button>
         </div>
 
@@ -102,7 +103,7 @@ export default function CartDrawer({
             ))
           ) : (
             <div className="cart-empty">
-              <span className="cart-empty__icon">✳</span>
+              <span className="cart-empty__icon"><UiIcon name="sparkle" /></span>
               <b>Пока здесь пусто</b>
               <p>Добавьте награды из каталога, и мы соберём ваш заказ.</p>
             </div>
@@ -121,7 +122,7 @@ export default function CartDrawer({
               type="button"
               onClick={onCheckout}
             >
-              Перейти к оформлению <span>↗</span>
+              Перейти к оформлению <span><UiIcon name="arrow-up-right" /></span>
             </button>
             <span className="cart-demo-note">
               {isAuthenticated ? "Безопасный переход к оплате через ЮKassa." : "Войдите, чтобы сохранить корзину и оформить заказ."}

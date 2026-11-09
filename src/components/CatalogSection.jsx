@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { categories, products } from "../data/products.js";
 import ProductCard from "./ProductCard.jsx";
+import UiIcon from "./UiIcon.jsx";
 
 function SearchIcon() {
   return (
@@ -117,7 +118,7 @@ export default function CatalogSection({
         <div className="catalog__foot">
           <p>Цены и изображения представлены для примера и будут уточнены.</p>
           <a className="text-link" href="#contacts">
-            Нужен большой тираж? Обсудим <span>↗</span>
+            Нужен большой тираж? Обсудим <span><UiIcon name="arrow-up-right" /></span>
           </a>
         </div>
       </div>

@@ -1,6 +1,7 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import {
   body,
+  authCodeHash,
   checkOrigin,
   clearSession,
   db,
@@ -12,10 +13,12 @@ import {
   passwordHash,
   refreshPayment,
   requireUser,
+  sendAuthCodeEmail,
   send,
   setSession,
   validConfirmationUrl,
   verifyAdminSetupToken,
+  verifyAuthCodeHash,
   verifyPassword,
 } from "../server/_lib.js";
 
@@ -23,6 +26,49 @@ function emailValue(value) {
   return typeof value === "string" && value.length <= 254
     ? value.trim().toLowerCase()
     : "";
+}
+
+function authCodeValue(value) {
+  return typeof value === "string" && /^\d{4}$/.test(value) ? value : "";
+}
+
+async function issueAuthCode(database, email, purpose) {
+  await database.query(
+    "UPDATE auth_codes SET used_at = NOW() WHERE email = $1 AND purpose = $2 AND used_at IS NULL",
+    [email, purpose],
+  );
+  const code = String(randomInt(0, 10_000)).padStart(4, "0");
+  const id = randomUUID();
+  await database.query(
+    `INSERT INTO auth_codes (id, email, purpose, code_hash, expires_at)
+     VALUES ($1,$2,$3,$4,NOW() + INTERVAL '10 minutes')`,
+    [id, email, purpose, authCodeHash(email, purpose, code)],
+  );
+  try {
+    await sendAuthCodeEmail(email, code, purpose);
+  } catch (error) {
+    await database.query("UPDATE auth_codes SET used_at = NOW() WHERE id = $1", [id]);
+    throw error;
+  }
+}
+
+async function consumeAuthCode(database, email, purpose, code) {
+  const result = await database.query(
+    `UPDATE auth_codes SET attempts = attempts + 1
+     WHERE id = (
+       SELECT id FROM auth_codes
+       WHERE email = $1 AND purpose = $2 AND used_at IS NULL
+         AND expires_at > NOW() AND attempts < 5
+       ORDER BY created_at DESC LIMIT 1
+     )
+       AND attempts < 5
+     RETURNING id, code_hash`,
+    [email, purpose],
+  );
+  if (!result.rowCount || !verifyAuthCodeHash(email, purpose, code, result.rows[0].code_hash)) {
+    throw Object.assign(new Error("Неверный или просроченный код"), { status: 400 });
+  }
+  return result.rows[0].id;
 }
 
 function productShape(row) {
@@ -79,13 +125,18 @@ async function handle(req, res) {
     }
     const role = isAdminEmail ? "admin" : "customer";
     const result = await database.query(
-      `INSERT INTO users (id, email, password_hash, role) VALUES ($1,$2,$3,$4)
+      `INSERT INTO users (id, email, password_hash, role, email_verified) VALUES ($1,$2,$3,$4,FALSE)
        ON CONFLICT (email) DO NOTHING RETURNING id, email, role`,
       [randomUUID(), email, await passwordHash(password), role],
     );
-    if (!result.rowCount) return fail(res, 409, "Аккаунт с этой почтой уже существует");
-    setSession(res, result.rows[0]);
-    return send(res, 201, { user: { id: result.rows[0].id, email, role } });
+    if (!result.rowCount) {
+      const existing = await database.query("SELECT email_verified FROM users WHERE email = $1", [email]);
+      if (!existing.rowCount || existing.rows[0].email_verified) {
+        return fail(res, 409, "Аккаунт с этой почтой уже существует");
+      }
+    }
+    await issueAuthCode(database, email, "verify-email");
+    return send(res, result.rowCount ? 201 : 200, { verificationRequired: true });
   }
 
   if (path === "auth/login" && method === "POST") {
@@ -93,12 +144,126 @@ async function handle(req, res) {
     const email = emailValue(data.email);
     const password = typeof data.password === "string" ? data.password : "";
     await enforceRateLimit(database, `login:${email}`);
-    const result = await database.query("SELECT id, email, password_hash, role FROM users WHERE email = $1", [email]);
+    const result = await database.query(
+      "SELECT id, email, password_hash, role, email_verified FROM users WHERE email = $1",
+      [email],
+    );
     const encoded = result.rows[0]?.password_hash || `${"00".repeat(16)}:${"00".repeat(64)}`;
     const valid = password.length <= 128 && await verifyPassword(password, encoded);
     if (!result.rowCount || !valid) return fail(res, 401, "Неверная почта или пароль");
+    if (!result.rows[0].email_verified) return fail(res, 403, "Подтвердите почту кодом из письма");
     setSession(res, result.rows[0]);
     return send(res, 200, { user: { id: result.rows[0].id, email, role: result.rows[0].role } });
+  }
+
+  if (path === "auth/verification/resend" && method === "POST") {
+    const data = await body(req);
+    const email = emailValue(data.email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(res, 400, "Введите корректную почту");
+    await enforceRateLimit(database, `verification-resend:${email}`);
+    const user = await database.query("SELECT id FROM users WHERE email = $1 AND email_verified = FALSE", [email]);
+    if (user.rowCount) await issueAuthCode(database, email, "verify-email");
+    return send(res, 200, { ok: true });
+  }
+
+  if (path === "auth/verify-email" && method === "POST") {
+    const data = await body(req);
+    const email = emailValue(data.email);
+    const code = authCodeValue(data.code);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !code) return fail(res, 400, "Введите почту и четырёхзначный код");
+    await enforceRateLimit(database, `verify-email:${email}`);
+    const codeId = await consumeAuthCode(database, email, "verify-email", code);
+    const client = await database.connect();
+    let user;
+    try {
+      await client.query("BEGIN");
+      const consumed = await client.query(
+        "UPDATE auth_codes SET used_at = NOW() WHERE id = $1 AND used_at IS NULL RETURNING id",
+        [codeId],
+      );
+      if (!consumed.rowCount) {
+        await client.query("ROLLBACK");
+        return fail(res, 400, "Неверный или просроченный код");
+      }
+      const verified = await client.query(
+        "UPDATE users SET email_verified = TRUE WHERE email = $1 RETURNING id, email, role",
+        [email],
+      );
+      if (!verified.rowCount) {
+        await client.query("ROLLBACK");
+        return fail(res, 400, "Аккаунт не найден");
+      }
+      await client.query(
+        "UPDATE auth_codes SET used_at = NOW() WHERE email = $1 AND purpose = 'verify-email' AND used_at IS NULL",
+        [email],
+      );
+      await client.query("COMMIT");
+      user = verified.rows[0];
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+    setSession(res, user);
+    return send(res, 200, { user });
+  }
+
+  if (path === "auth/password/forgot" && method === "POST") {
+    const data = await body(req);
+    const email = emailValue(data.email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(res, 400, "Введите корректную почту");
+    await enforceRateLimit(database, `password-forgot:${email}`);
+    const user = await database.query("SELECT id FROM users WHERE email = $1", [email]);
+    if (user.rowCount) await issueAuthCode(database, email, "reset-password");
+    return send(res, 200, { ok: true });
+  }
+
+  if (path === "auth/password/reset" && method === "POST") {
+    const data = await body(req);
+    const email = emailValue(data.email);
+    const code = authCodeValue(data.code);
+    const password = typeof data.password === "string" ? data.password : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !code) {
+      return fail(res, 400, "Введите почту и четырёхзначный код");
+    }
+    if (password.length < 10 || password.length > 128) {
+      return fail(res, 400, "Пароль должен содержать от 10 до 128 символов");
+    }
+    await enforceRateLimit(database, `password-reset:${email}`);
+    const codeId = await consumeAuthCode(database, email, "reset-password", code);
+    const hash = await passwordHash(password);
+    const client = await database.connect();
+    try {
+      await client.query("BEGIN");
+      const consumed = await client.query(
+        "UPDATE auth_codes SET used_at = NOW() WHERE id = $1 AND used_at IS NULL RETURNING id",
+        [codeId],
+      );
+      if (!consumed.rowCount) {
+        await client.query("ROLLBACK");
+        return fail(res, 400, "Неверный или просроченный код");
+      }
+      const updated = await client.query(
+        "UPDATE users SET password_hash = $1, email_verified = TRUE WHERE email = $2 RETURNING id",
+        [hash, email],
+      );
+      if (!updated.rowCount) {
+        await client.query("ROLLBACK");
+        return fail(res, 400, "Аккаунт не найден");
+      }
+      await client.query(
+        "UPDATE auth_codes SET used_at = NOW() WHERE email = $1 AND purpose = 'reset-password' AND used_at IS NULL",
+        [email],
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+    return send(res, 200, { ok: true });
   }
 
   if (path === "auth/me" && method === "GET") {

@@ -1,5 +1,7 @@
 import Brand from "./Brand.jsx";
 
+import UiIcon from "./UiIcon.jsx";
+
 export default function SiteFooter() {
   return (
     <footer className="footer">
@@ -7,7 +9,7 @@ export default function SiteFooter() {
         <Brand footer />
         <p>Награды для достижений, которыми хочется гордиться.</p>
         <a href="#home" className="footer__top-link">
-          Наверх ↑
+          Наверх <UiIcon name="arrow-up" />
         </a>
       </div>
       <div className="container footer__bottom">

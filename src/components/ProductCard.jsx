@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { formatPrice } from "../utils.js";
 import ProductArtwork from "./ProductArtwork.jsx";
+import UiIcon from "./UiIcon.jsx";
 
 export default function ProductCard({ product, quantity, onAdd, index }) {
   const [favorite, setFavorite] = useState(false);
@@ -23,7 +24,7 @@ export default function ProductCard({ product, quantity, onAdd, index }) {
           aria-pressed={favorite}
           onClick={() => setFavorite((current) => !current)}
         >
-          {favorite ? "♥" : "♡"}
+          <UiIcon name={favorite ? "heart-filled" : "heart"} />
         </button>
         <ProductArtwork type={product.visual} id={product.id} />
       </div>
@@ -42,7 +43,7 @@ export default function ProductCard({ product, quantity, onAdd, index }) {
             aria-label={`Добавить в корзину: ${product.name}`}
           >
             {inCart ? "В корзине" : "В корзину"}
-            <span aria-hidden="true">{inCart ? "✓" : "+"}</span>
+            <span aria-hidden="true">{inCart ? <UiIcon name="check" /> : "+"}</span>
           </button>
         </div>
       </div>

@@ -1,3 +1,5 @@
+import UiIcon from "./UiIcon.jsx";
+
 export default function AboutSection() {
   return (
     <section className="about section" id="about">
@@ -16,7 +18,7 @@ export default function AboutSection() {
             <br />
             <em>уже достижение.</em>»
           </div>
-          <span className="about__star">✳</span>
+          <span className="about__star"><UiIcon name="sparkle" /></span>
         </div>
         <div className="about__content">
           <p className="eyebrow">
@@ -46,7 +48,7 @@ export default function AboutSection() {
             </div>
           </div>
           <a className="text-link" href="#contacts">
-            Расскажите о своём событии <span>↗</span>
+            Расскажите о своём событии <span><UiIcon name="arrow-up-right" /></span>
           </a>
         </div>
       </div>
