@@ -1,12 +1,34 @@
+import { useState } from "react";
+import { apiRequest } from "../utils/api.js";
+import ContactLinks from "./ContactLinks.jsx";
 import UiIcon from "./UiIcon.jsx";
 
-export default function ContactSection({ onSubmit, status }) {
-  function handleSubmit(event) {
+export default function ContactSection() {
+  const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function handleSubmit(event) {
     event.preventDefault();
-    event.currentTarget.reset();
-    onSubmit(
-      "Спасибо за заявку! Сейчас форма работает как демо — подключите сервис отправки, чтобы получать обращения.",
-    );
+    setBusy(true);
+    setStatus("");
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    try {
+      await apiRequest("contact", {
+        method: "POST",
+        body: JSON.stringify({
+          name: data.get("name"),
+          phone: data.get("phone"),
+          message: data.get("message"),
+        }),
+      });
+      form.reset();
+      setStatus("Заявка отправлена. Мы скоро с вами свяжемся.");
+    } catch (error) {
+      setStatus(error.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -25,12 +47,18 @@ export default function ContactSection({ onSubmit, status }) {
             Расскажите, какое событие вы готовите. Поможем подобрать награды
             для любого результата.
           </p>
-          <a className="contact__phone" href="tel:+78005553535">
-            8 800 555-35-35 <span><UiIcon name="arrow-up-right" /></span>
+          <a className="contact__phone" href="tel:+74957785588">
+            8 (495) 778-55-88 <span><UiIcon name="arrow-up-right" /></span>
           </a>
           <p className="contact__hours">
-            Ежедневно, 9:00–18:00 · время московское
+            Телефон для связи
           </p>
+          <address className="contact__addresses">
+            <p><b>Магазин</b><br />Золоторожский Вал, 11с22<br />Спортивный центр «СимволСпорта»</p>
+            <p><b>Склад</b><br />проезд Завода Серп и Молот, 12</p>
+          </address>
+          <p className="contact__messenger-note">Напишите нам: +7 (991) 136-92-30</p>
+          <ContactLinks />
         </div>
         <form className="contact-form" onSubmit={handleSubmit}>
           <label>
@@ -55,13 +83,13 @@ export default function ContactSection({ onSubmit, status }) {
               placeholder="Расскажите о событии и примерном тираже"
             />
           </label>
-          <button className="button button--light" type="submit">
-            Отправить заявку <span><UiIcon name="arrow-up-right" /></span>
+          <button className="button button--light" type="submit" disabled={busy}>
+            {busy ? "Отправляем…" : <>Отправить заявку <span><UiIcon name="arrow-up-right" /></span></>}
           </button>
           <p className="contact-form__note">
             Нажимая кнопку, вы соглашаетесь на обработку персональных данных.
           </p>
-          <p className="form-status" role="status" aria-live="polite">
+          <p className={`form-status${status && !status.startsWith("Заявка отправлена") ? " form-status--error" : ""}`} role="status" aria-live="polite">
             {status}
           </p>
         </form>

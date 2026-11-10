@@ -17,7 +17,9 @@ export default function SiteFooter() {
         <span>
           Цены и изображения на сайте — примеры. Уточняйте детали перед заказом.
         </span>
-        <a href="mailto:hello@simvol-sporta.ru">hello@simvol-sporta.ru</a>
+        <span className="footer__legal">
+          Индивидуальный предприниматель Щукин Олег Валерьевич · ИНН 772171824020 · ОГРНИП 325774600323142
+        </span>
       </div>
     </footer>
   );

@@ -72,8 +72,8 @@ export default function SiteHeader({ cartCount, onOpenCart, user, onOpenAuth, on
           </nav>
 
           <div className="header__actions">
-            <a className="header__phone" href="tel:+78005553535">
-              8 800 555-35-35
+            <a className="header__phone" href="tel:+74957785588">
+              8 (495) 778-55-88
             </a>
             {user ? (
               <>

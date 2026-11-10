@@ -217,6 +217,15 @@ button { color: inherit; }
 .contact__phone { display: inline-block; font: 500 20px var(--display); letter-spacing: -.05em; }
 .contact__phone span { margin-left: 8px; font-size: 15px; }
 .contact__hours { margin: 8px 0 0; color: rgba(255,255,255,.7); font-size: 9px; }
+.contact__addresses { margin-top: 21px; color: rgba(255,255,255,.86); font-size: 10px; font-style: normal; line-height: 1.8; }
+.contact__addresses p { margin: 0 0 11px; }
+.contact__addresses b { color: #fff; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
+.contact__messenger-note { margin: 18px 0 8px; color: rgba(255,255,255,.8); font-size: 10px; }
+.contact-links { display: flex; flex-wrap: wrap; gap: 9px; }
+.contact-links__link { min-height: 38px; display: inline-flex; align-items: center; gap: 8px; padding: 0 11px; border: 1px solid rgba(255,255,255,.4); color: #fff; font-size: 9px; font-weight: 800; transition: background .2s, color .2s; }
+.contact-links__link:hover { color: var(--red); background: #fff; }
+.contact-links__link svg { width: 17px; height: 17px; fill: currentColor; }
+.contact-links__link:last-child svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 .contact-form { padding: 25px 28px 20px; color: var(--ink); background: white; box-shadow: 0 20px 60px rgba(105,12,10,.16); }
 .contact-form label, .checkout-form label { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; color: #4d4945; font-size: 9px; font-weight: 800; }
 .contact-form input, .contact-form textarea, .checkout-form input { width: 100%; min-height: 42px; padding: 11px 12px; border: 1px solid #e8e5e0; border-radius: 0; outline: none; resize: vertical; color: var(--ink); background: #fff; font-size: 10px; transition: border-color .2s, box-shadow .2s; }
@@ -234,6 +243,7 @@ button { color: inherit; }
 .footer__top > p { margin: 0; color: #aaa5a0; font-size: 9px; }
 .footer__top-link { margin-left: auto; color: #fff; font-size: 9px; font-weight: 700; }
 .footer__bottom { display: flex; justify-content: space-between; gap: 20px; padding-top: 17px; color: #918b85; font-size: 8px; }
+.footer__legal { flex-basis: 100%; }
 .footer__bottom a { color: #d7d2cc; }
 
 .cart-overlay, .checkout-overlay { position: fixed; z-index: 50; inset: 0; display: flex; justify-content: flex-end; }

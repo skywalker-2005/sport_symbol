@@ -36,7 +36,6 @@ export default function App() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-  const [contactStatus, setContactStatus] = useState("");
   const [checkoutStatus, setCheckoutStatus] = useState("");
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [toast, setToast] = useState("");
@@ -251,10 +250,7 @@ export default function App() {
         <PromoSection />
         <AboutSection />
         <StepsSection />
-        <ContactSection
-          onSubmit={(message) => setContactStatus(message)}
-          status={contactStatus}
-        />
+        <ContactSection />
       </main>
       <SiteFooter />
       <CartDrawer

@@ -14,6 +14,7 @@ import {
   refreshPayment,
   requireUser,
   sendAuthCodeEmail,
+  sendContactEmail,
   send,
   setSession,
   validConfirmationUrl,
@@ -105,7 +106,45 @@ async function handle(req, res) {
     return res.end();
   }
   if (path !== "payments/webhook" && method !== "GET") checkOrigin(req);
+
+  if (path === "health" && method === "GET") {
+    const checks = {
+      database: Boolean(process.env.DATABASE_URL || process.env.LAYERO_DATABASE_URL),
+      authentication: Boolean(process.env.JWT_SECRET && Buffer.byteLength(process.env.JWT_SECRET) >= 32),
+      email: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM),
+      contactEmail: Boolean(process.env.CONTACT_EMAIL),
+      paymentEncryption: Boolean(process.env.PAYMENT_ENCRYPTION_KEY),
+    };
+    if (!checks.database) {
+      return send(res, 503, { ok: false, error: "Database URL is not configured", checks });
+    }
+    try {
+      await (await db()).query("SELECT 1");
+    } catch (error) {
+      console.error("Health check database connection failed:", error);
+      return send(res, 503, { ok: false, error: "Database connection failed", checks: { ...checks, database: false } });
+    }
+    return send(res, 200, { ok: true, checks });
+  }
+
   const database = await db();
+
+  if (path === "contact" && method === "POST") {
+    const data = await body(req);
+    const name = typeof data.name === "string" ? data.name.trim() : "";
+    const phone = typeof data.phone === "string" ? data.phone.trim() : "";
+    const message = typeof data.message === "string" ? data.message.trim() : "";
+    if (!name || name.length > 120 || !/^[+()\d\s-]{7,25}$/.test(phone) || message.length > 1500) {
+      return fail(res, 400, "Проверьте имя, телефон и длину сообщения");
+    }
+    const forwardedFor = req.headers["x-forwarded-for"];
+    const clientIp = typeof forwardedFor === "string"
+      ? forwardedFor.split(",")[0].trim()
+      : req.socket?.remoteAddress || "unknown";
+    await enforceRateLimit(database, `contact:${clientIp}`);
+    await sendContactEmail({ name, phone, message });
+    return send(res, 200, { ok: true });
+  }
 
   if (path === "products" && method === "GET") {
     const result = await database.query("SELECT * FROM products ORDER BY created_at, id");

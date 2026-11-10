@@ -5,8 +5,12 @@ import { products as initialProducts } from "../src/data/products.js";
 
 const { Pool } = pg;
 const scrypt = promisify(scryptCallback);
+function databaseUrl() {
+  return process.env.DATABASE_URL || process.env.LAYERO_DATABASE_URL;
+}
+
 function poolOptions() {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = databaseUrl();
   if (!connectionString) return { max: 5 };
   const url = new URL(connectionString);
   const sslMode = url.searchParams.get("sslmode");
@@ -24,7 +28,7 @@ const pool = new Pool(poolOptions());
 let schemaPromise;
 
 export async function db() {
-  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not configured");
+  if (!databaseUrl()) throw new Error("DATABASE_URL or LAYERO_DATABASE_URL is not configured");
   if (!schemaPromise) {
     schemaPromise = (async () => {
       await pool.query(`
@@ -286,7 +290,45 @@ export async function sendAuthCodeEmail(email, code, purpose) {
     throw Object.assign(new Error("Не удалось отправить письмо. Попробуйте ещё раз позже."), { status: 502 });
   }
   if (!response.ok) {
-    throw Object.assign(new Error("Почтовый сервис не принял письмо. Попробуйте ещё раз позже."), { status: 502 });
+    console.error("Resend rejected an authentication email:", response.status);
+    throw Object.assign(new Error("Почтовый сервис не принял письмо. Проверьте отправителя и настройки Resend."), { status: 502 });
+  }
+}
+
+export async function sendContactEmail({ name, phone, message }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  const recipient = process.env.CONTACT_EMAIL;
+  if (!apiKey || !from || !recipient) {
+    throw Object.assign(new Error("Почта для заявок не настроена. Обратитесь к администратору."), { status: 503 });
+  }
+  let response;
+  try {
+    response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [recipient],
+        subject: "Новая заявка с сайта «Символ Спорта»",
+        text: [
+          "Новая заявка с сайта «Символ Спорта».",
+          `Имя: ${name}`,
+          `Телефон: ${phone}`,
+          `Сообщение: ${message || "не указано"}`,
+        ].join("\n"),
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    throw Object.assign(new Error("Не удалось отправить заявку. Попробуйте ещё раз позже."), { status: 502 });
+  }
+  if (!response.ok) {
+    console.error("Resend rejected a contact request:", response.status);
+    throw Object.assign(new Error("Почтовый сервис не принял заявку. Проверьте отправителя и настройки Resend."), { status: 502 });
   }
 }
 
