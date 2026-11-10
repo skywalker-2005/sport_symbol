@@ -1,4 +1,5 @@
 import { useState } from "react";
+import UiIcon from "./UiIcon.jsx";
 import { apiRequest } from "../utils/api.js";
 
 const titles = {
