@@ -1,0 +1,6 @@
+{
+  "runtime": "node_web",
+  "buildCommand": "npm run build:layero",
+  "startCommand": "npm start",
+  "port": 3000
+}
