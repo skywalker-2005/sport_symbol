@@ -169,9 +169,16 @@ export function checkOrigin(req) {
   const origin = req.headers.origin;
   if (!origin) throw Object.assign(new Error("Источник запроса не подтверждён"), { status: 403 });
   try {
-    const originHost = new URL(origin).host;
+    const parsedOrigin = new URL(origin);
     const requestHost = req.headers["x-forwarded-host"] || req.headers.host;
-    if (originHost !== requestHost) throw new Error();
+    const allowedOrigins = (process.env.CORS_ORIGINS || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .map((value) => new URL(value).origin);
+    if (allowedOrigins.length
+      ? !allowedOrigins.includes(parsedOrigin.origin)
+      : parsedOrigin.host !== requestHost) throw new Error();
   } catch {
     throw Object.assign(new Error("Недопустимый источник запроса"), { status: 403 });
   }
@@ -198,11 +205,13 @@ export function setSession(res, user) {
     email: user.email,
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7,
   });
-  res.setHeader("Set-Cookie", `session=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800`);
+  const sameSite = process.env.NODE_ENV === "production" ? "None" : "Lax";
+  res.setHeader("Set-Cookie", `session=${token}; HttpOnly; Secure; SameSite=${sameSite}; Path=/; Max-Age=604800`);
 }
 
 export function clearSession(res) {
-  res.setHeader("Set-Cookie", "session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0");
+  const sameSite = process.env.NODE_ENV === "production" ? "None" : "Lax";
+  res.setHeader("Set-Cookie", `session=; HttpOnly; Secure; SameSite=${sameSite}; Path=/; Max-Age=0`);
 }
 
 export function getUser(req) {

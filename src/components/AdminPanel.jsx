@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { categories } from "../data/products.js";
-import { apiRequest } from "../utils/api.js";
+import { API_BASE_URL, apiRequest } from "../utils/api.js";
 import { formatPrice } from "../utils.js";
 import UiIcon from "./UiIcon.jsx";
 
@@ -195,7 +195,7 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
           {tab === "payments" && (
             <>
               <h3>Подключение ЮKassa</h3>
-              <p className="admin-help">Секретный ключ шифруется на сервере и никогда не возвращается в браузер. Для сохранения ключей задайте PAYMENT_ENCRYPTION_KEY в переменных окружения Vercel.</p>
+              <p className="admin-help">Секретный ключ шифруется на сервере и никогда не возвращается в браузер. Для сохранения ключей задайте PAYMENT_ENCRYPTION_KEY в переменных окружения backend-сервиса.</p>
               <form className="checkout-form admin-payment-form" onSubmit={savePaymentSettings}>
                 <label>Идентификатор магазина<input name="shopId" inputMode="numeric" pattern="[0-9]{1,20}" value={paymentSettings.shopId} onChange={(event) => setPaymentSettings((current) => ({ ...current, shopId: event.target.value }))} required /></label>
                 <label>Секретный ключ<input name="secretKey" type="password" autoComplete="new-password" maxLength="256" placeholder={paymentSettings.configured ? "Оставьте пустым, чтобы не менять" : "Вставьте секретный ключ ЮKassa"} required={!paymentSettings.configured} /></label>
@@ -204,7 +204,7 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
               <p className={paymentSettings.configured ? "admin-payment-state is-ready" : "admin-payment-state"}>
                 {paymentSettings.configured ? "Данные магазина сохранены" : "Платежи пока не настроены"}
               </p>
-              <p className="admin-help">URL уведомлений в кабинете ЮKassa: <code>{window.location.origin}/api/payments/webhook</code>. Включите события payment.succeeded и payment.canceled.</p>
+              <p className="admin-help">URL уведомлений в кабинете ЮKassa: <code>{API_BASE_URL || window.location.origin}/api/payments/webhook</code>. Включите события payment.succeeded и payment.canceled.</p>
             </>
           )}
           <p className="form-status form-status--error" role="status">{status}</p>
