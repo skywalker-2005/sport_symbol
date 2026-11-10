@@ -46,7 +46,7 @@ async function issueAuthCode(database, email, purpose) {
     [id, email, purpose, authCodeHash(email, purpose, code)],
   );
   try {
-    await sendAuthCodeEmail(email, code, purpose);
+    return await sendAuthCodeEmail(email, code, purpose);
   } catch (error) {
     await database.query("UPDATE auth_codes SET used_at = NOW() WHERE id = $1", [id]);
     throw error;
@@ -112,6 +112,7 @@ async function handle(req, res) {
       database: Boolean(process.env.DATABASE_URL || process.env.LAYERO_DATABASE_URL),
       authentication: Boolean(process.env.JWT_SECRET && Buffer.byteLength(process.env.JWT_SECRET) >= 32),
       email: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM),
+      localAuthCodes: process.env.NODE_ENV === "development" && process.env.LOCAL_DEV_ADMIN === "true",
       contactEmail: Boolean(process.env.CONTACT_EMAIL),
       paymentEncryption: Boolean(process.env.PAYMENT_ENCRYPTION_KEY),
     };
@@ -174,8 +175,8 @@ async function handle(req, res) {
         return fail(res, 409, "Аккаунт с этой почтой уже существует");
       }
     }
-    await issueAuthCode(database, email, "verify-email");
-    return send(res, result.rowCount ? 201 : 200, { verificationRequired: true });
+    const codeLoggedLocally = await issueAuthCode(database, email, "verify-email");
+    return send(res, result.rowCount ? 201 : 200, { verificationRequired: true, codeLoggedLocally });
   }
 
   if (path === "auth/login" && method === "POST") {
@@ -201,8 +202,10 @@ async function handle(req, res) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(res, 400, "Введите корректную почту");
     await enforceRateLimit(database, `verification-resend:${email}`);
     const user = await database.query("SELECT id FROM users WHERE email = $1 AND email_verified = FALSE", [email]);
-    if (user.rowCount) await issueAuthCode(database, email, "verify-email");
-    return send(res, 200, { ok: true });
+    const codeLoggedLocally = user.rowCount
+      ? await issueAuthCode(database, email, "verify-email")
+      : false;
+    return send(res, 200, { ok: true, codeLoggedLocally });
   }
 
   if (path === "auth/verify-email" && method === "POST") {
@@ -254,8 +257,10 @@ async function handle(req, res) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(res, 400, "Введите корректную почту");
     await enforceRateLimit(database, `password-forgot:${email}`);
     const user = await database.query("SELECT id FROM users WHERE email = $1", [email]);
-    if (user.rowCount) await issueAuthCode(database, email, "reset-password");
-    return send(res, 200, { ok: true });
+    const codeLoggedLocally = user.rowCount
+      ? await issueAuthCode(database, email, "reset-password")
+      : false;
+    return send(res, 200, { ok: true, codeLoggedLocally });
   }
 
   if (path === "auth/password/reset" && method === "POST") {

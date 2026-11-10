@@ -1,10 +1,20 @@
-import { createCipheriv, createDecipheriv, createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHmac, randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import pg from "pg";
 import { products as initialProducts } from "../src/data/products.js";
 
 const { Pool } = pg;
 const scrypt = promisify(scryptCallback);
+
+const localAdmin = {
+  email: "admin@localhost.test",
+  password: "SimvolLocal-Admin!2026",
+};
+
+function isLocalDevelopment() {
+  return process.env.NODE_ENV === "development" && process.env.LOCAL_DEV_ADMIN === "true";
+}
+
 function databaseUrl() {
   return process.env.DATABASE_URL || process.env.LAYERO_DATABASE_URL;
 }
@@ -28,7 +38,22 @@ const pool = new Pool(poolOptions());
 let schemaPromise;
 
 export async function db() {
-  if (!databaseUrl()) throw new Error("DATABASE_URL or LAYERO_DATABASE_URL is not configured");
+  const connectionString = databaseUrl();
+  if (!connectionString) throw new Error("DATABASE_URL or LAYERO_DATABASE_URL is not configured");
+  if (process.env.LOCAL_DEV_ADMIN === "true" && !isLocalDevelopment()) {
+    throw new Error("LOCAL_DEV_ADMIN is only available in development");
+  }
+  if (isLocalDevelopment()) {
+    let databaseHost;
+    try {
+      databaseHost = new URL(connectionString).hostname;
+    } catch {
+      throw new Error("DATABASE_URL is invalid");
+    }
+    if (!["localhost", "127.0.0.1", "::1"].includes(databaseHost)) {
+      throw new Error("LOCAL_DEV_ADMIN requires a loopback PostgreSQL database");
+    }
+  }
   if (!schemaPromise) {
     schemaPromise = (async () => {
       await pool.query(`
@@ -109,6 +134,17 @@ export async function db() {
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (id) DO NOTHING`,
           [product.id, product.name, product.description, product.category, product.categoryName,
             product.price, product.unit, product.badge, product.visual, product.background],
+        );
+      }
+      if (isLocalDevelopment()) {
+        await pool.query(
+          `INSERT INTO users (id, email, password_hash, role, email_verified)
+           VALUES ($1, $2, $3, 'admin', TRUE)
+           ON CONFLICT (email) DO UPDATE SET
+             password_hash = EXCLUDED.password_hash,
+             role = 'admin',
+             email_verified = TRUE`,
+          [randomUUID(), localAdmin.email, await passwordHash(localAdmin.password)],
         );
       }
     })().catch((error) => {
@@ -272,6 +308,11 @@ export function verifyAuthCodeHash(email, purpose, code, encoded) {
 }
 
 export async function sendAuthCodeEmail(email, code, purpose) {
+  if (isLocalDevelopment()) {
+    console.info(`[local email] ${purpose} code for ${email}: ${code}`);
+    return true;
+  }
+
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) {
@@ -302,6 +343,7 @@ export async function sendAuthCodeEmail(email, code, purpose) {
     console.error("Resend rejected an authentication email:", response.status);
     throw Object.assign(new Error("Почтовый сервис не принял письмо. Проверьте отправителя и настройки Resend."), { status: 502 });
   }
+  return false;
 }
 
 export async function sendContactEmail({ name, phone, message }) {

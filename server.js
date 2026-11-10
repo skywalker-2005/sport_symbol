@@ -101,4 +101,13 @@ if (!Number.isInteger(port) || port < 1 || port > 65_535) {
   throw new Error("PORT must be a valid TCP port");
 }
 
-server.listen(port, "0.0.0.0");
+const isLocalDevelopment = process.env.NODE_ENV === "development" && process.env.LOCAL_DEV_ADMIN === "true";
+if (process.env.LOCAL_DEV_ADMIN === "true" && !isLocalDevelopment) {
+  throw new Error("LOCAL_DEV_ADMIN is only available in development");
+}
+
+const host = isLocalDevelopment ? "127.0.0.1" : "0.0.0.0";
+server.listen(port, host, () => {
+  console.info(`Символ Спорта: http://${host}:${port}`);
+  if (isLocalDevelopment) console.info("Локальный dev-администратор включён; production-доступ отключён.");
+});

@@ -7,19 +7,56 @@
 
 ## Разработка
 
-Нужен Node.js 22 или новее. Для API необходима PostgreSQL. Скопируйте
-`.env.example` в `.env.local`, задайте переменные для своей базы и запустите
-сервер с этим файлом:
+Нужны Node.js 22 или новее и локально установленная PostgreSQL. Создайте
+отдельную базу и роль для разработки (в `psql` или pgAdmin выполните команды
+по отдельности, заменив пароль на свой):
+
+```sql
+CREATE ROLE sport_symbol_local LOGIN PASSWORD 'ваш-локальный-пароль';
+CREATE DATABASE sport_symbol_local OWNER sport_symbol_local;
+```
+
+В Windows PowerShell скопируйте шаблон:
+
+```powershell
+Copy-Item local.env.example local.env
+```
+
+В `local.env` укажите пароль роли в `DATABASE_URL`, затем задайте случайные
+`JWT_SECRET` и `PAYMENT_ENCRYPTION_KEY`. Создать их можно локально:
+
+```bash
+node -e "const c=require('node:crypto'); console.log('JWT_SECRET='+c.randomBytes(48).toString('base64url')); console.log('PAYMENT_ENCRYPTION_KEY='+c.randomBytes(32).toString('base64'))"
+```
+
+Установите зависимости и запустите одной командой сборку frontend и backend:
 
 ```bash
 npm ci
-npm run build
-node --env-file=.env.local server.js
+npm run start:local
 ```
 
-Для разработки интерфейса используйте `npm run dev`; Vite автоматически
-читает `.env.local`. Для локальной проверки именно API-only процесса запустите
-`node --env-file=.env.local render-server.js`.
+Откройте `http://127.0.0.1:3000`. Этот сервер отдаёт frontend и `/api` с
+одного адреса, поэтому локальный сайт сразу использует настроенную PostgreSQL.
+Таблицы и каталог создаются автоматически при первом запросе.
+
+Локальная учётная запись администратора:
+
+```text
+Логин:  admin@localhost.test
+Пароль: SimvolLocal-Admin!2026
+```
+
+Она автоматически создаётся в локальной базе. Локальный режим включён только
+при `NODE_ENV=development` и `LOCAL_DEV_ADMIN=true`, требует PostgreSQL на
+loopback-адресе и слушает только `127.0.0.1`. В production этот dev-администратор
+недоступен. Не используйте локальную базу для боевых данных.
+
+Пользовательские регистрации тоже работают: в локальном режиме четырёхзначные
+коды подтверждения и сброса пароля выводятся в терминал процесса вместо
+отправки почты. Для реальных писем настройте Resend по инструкции
+развёртывания. `npm run dev` запускает только Vite; для полностью работающего
+локального сайта используйте `npm run start:local`.
 
 ## Backend на Render
 
@@ -133,6 +170,7 @@ backend на одном origin.
 | `DATABASE_URL` | PostgreSQL connection string |
 | `CORS_ORIGINS` | Разрешённые origin frontend; разделитель — запятая |
 | `JWT_SECRET` | Подпись сессий, минимум 32 байта |
+| `LOCAL_DEV_ADMIN` | Локальный dev-администратор; включать только в `local.env` |
 | `ADMIN_EMAIL` | Email первой админской учётной записи |
 | `ADMIN_SETUP_TOKEN` | Временный секрет её первичной регистрации |
 | `PAYMENT_ENCRYPTION_KEY` | Шифрование ключа ЮKassa, 32 байта |
@@ -190,6 +228,7 @@ backend на одном origin.
 - `src/` — React-интерфейс и каталог.
 - `render-server.js` — отдельный API-сервер для Render.
 - `server.js` — сервер, который отдаёт frontend и API на одном origin.
+- `local.env.example` — шаблон переменных для локального запуска.
 - `api/[...path].js` — маршруты API.
 - `server/_lib.js` — PostgreSQL, почта, сессии и шифрование платёжных данных.
 - `render.yaml` — настройки Web Service Render.

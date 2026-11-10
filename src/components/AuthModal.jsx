@@ -15,6 +15,7 @@ export default function AuthModal({ isOpen, onClose, onAuthenticated }) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState("error");
+  const [codeLoggedLocally, setCodeLoggedLocally] = useState(false);
   const [busy, setBusy] = useState(false);
 
   if (!isOpen) return null;
@@ -40,7 +41,7 @@ export default function AuthModal({ isOpen, onClose, onAuthenticated }) {
         onAuthenticated(user);
         onClose();
       } else if (mode === "register") {
-        await apiRequest("auth/register", {
+        const result = await apiRequest("auth/register", {
           method: "POST",
           body: JSON.stringify({
             email: formEmail,
@@ -49,7 +50,10 @@ export default function AuthModal({ isOpen, onClose, onAuthenticated }) {
           }),
         });
         changeMode("verify-email");
-        setStatus("Мы отправили четырёхзначный код на вашу почту.");
+        setCodeLoggedLocally(result.codeLoggedLocally);
+        setStatus(result.codeLoggedLocally
+          ? "Локальный код подтверждения выведен в терминал backend."
+          : "Мы отправили четырёхзначный код на вашу почту.");
         setStatusTone("success");
       } else if (mode === "verify-email") {
         const { user } = await apiRequest("auth/verify-email", {
@@ -59,12 +63,15 @@ export default function AuthModal({ isOpen, onClose, onAuthenticated }) {
         onAuthenticated(user);
         onClose();
       } else if (mode === "forgot-password") {
-        await apiRequest("auth/password/forgot", {
+        const result = await apiRequest("auth/password/forgot", {
           method: "POST",
           body: JSON.stringify({ email: formEmail }),
         });
         changeMode("reset-password");
-        setStatus("Если аккаунт существует, на его почту отправлен код.");
+        setCodeLoggedLocally(result.codeLoggedLocally);
+        setStatus(result.codeLoggedLocally
+          ? "Если аккаунт существует, код выведен в терминал backend."
+          : "Если аккаунт существует, на его почту отправлен код.");
         setStatusTone("success");
       } else {
         await apiRequest("auth/password/reset", {
@@ -97,11 +104,14 @@ export default function AuthModal({ isOpen, onClose, onAuthenticated }) {
     setBusy(true);
     setStatus("");
     try {
-      await apiRequest("auth/verification/resend", {
+      const result = await apiRequest("auth/verification/resend", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
-      setStatus("Если аккаунт ожидает подтверждения, новый код уже отправлен.");
+      setCodeLoggedLocally(result.codeLoggedLocally);
+      setStatus(result.codeLoggedLocally
+        ? "Новый код выведен в терминал backend."
+        : "Если аккаунт ожидает подтверждения, новый код уже отправлен.");
       setStatusTone("success");
     } catch (error) {
       setStatus(error.message);
@@ -124,9 +134,13 @@ export default function AuthModal({ isOpen, onClose, onAuthenticated }) {
         <p>
           {mode === "login" && "Войдите, чтобы продолжить покупки и сохранить корзину."}
           {mode === "register" && "Корзина будет доступна на всех ваших устройствах. Для входа подтвердите почту."}
-          {mode === "verify-email" && "Введите код из письма, чтобы подтвердить адрес электронной почты."}
+          {mode === "verify-email" && (codeLoggedLocally
+            ? "Введите код из терминала backend, чтобы подтвердить адрес электронной почты."
+            : "Введите код из письма, чтобы подтвердить адрес электронной почты.")}
           {mode === "forgot-password" && "Укажите почту аккаунта — мы отправим код для восстановления доступа."}
-          {mode === "reset-password" && "Введите код из письма и задайте новый пароль."}
+          {mode === "reset-password" && (codeLoggedLocally
+            ? "Введите код из терминала backend и задайте новый пароль."
+            : "Введите код из письма и задайте новый пароль.")}
         </p>
         <form className="checkout-form" onSubmit={submit}>
           {needsEmailInput ? (
