@@ -19,6 +19,8 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
   const [paymentSettings, setPaymentSettings] = useState({ configured: false, shopId: "" });
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageInputKey, setImageInputKey] = useState(0);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -83,14 +85,62 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
           categoryName: category.label,
           price: Number(form.get("price")),
           unit: form.get("unit"),
+          imageUrl: imageUrl || null,
         }),
       });
       setProducts((current) => [...current, product]);
       formElement.reset();
+      setImageUrl("");
+      setImageInputKey((current) => current + 1);
       onProductsChange();
       setStatus("Товар добавлен");
     } catch (error) {
       setStatus(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function selectProductImage(event) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    setStatus("");
+    if (!file) {
+      setImageUrl("");
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setStatus("Выберите изображение JPEG, PNG или WebP");
+      input.value = "";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setStatus("Исходное изображение должно быть не больше 10 МБ");
+      input.value = "";
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Не удалось обработать изображение");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      const compressedImage = canvas.toDataURL("image/jpeg", 0.82);
+      if (compressedImage.length > 1_400_000) {
+        throw new Error("После сжатия изображение должно быть не больше 1 МБ");
+      }
+      setImageUrl(compressedImage);
+    } catch (error) {
+      setStatus(error.message || "Не удалось загрузить изображение");
+      input.value = "";
     } finally {
       setBusy(false);
     }
@@ -140,7 +190,12 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
               <div className="admin-products">
                 {products.map((product) => (
                   <form className="admin-product" key={product.id} onSubmit={(event) => { event.preventDefault(); updatePrice(product.id, new FormData(event.currentTarget).get("price")); }}>
-                    <span><b>{product.name}</b><small>{product.categoryName}</small></span>
+                    <span className="admin-product__info">
+                      {product.imageUrl
+                        ? <img className="admin-product__thumb" src={product.imageUrl} alt="" />
+                        : null}
+                      <span><b>{product.name}</b><small>{product.categoryName}</small></span>
+                    </span>
                     <label className="admin-price">
                       <input key={`${product.id}-${product.price}`} name="price" type="number" min="0" max="100000000" step="1" defaultValue={product.price} required aria-label={`Цена товара ${product.name}`} />
                       <span>₽</span>
@@ -151,12 +206,25 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
               </div>
               <h3 className="admin-subheading">Добавить товар</h3>
               <form className="checkout-form admin-add-product" onSubmit={addProduct}>
-                <label>Название<input name="name" maxLength="120" required /></label>
-                <label>Описание<input name="description" maxLength="500" required /></label>
-                <div className="admin-form-row">
+                <div className="admin-add-product__fields">
+                  <label>Название<input name="name" maxLength="120" required /></label>
+                  <label className="admin-add-product__wide">Описание<input name="description" maxLength="500" required /></label>
                   <label>Категория<select name="category">{categories.filter((item) => item.id !== "all").map((item) => <option value={item.id} key={item.id}>{item.label}</option>)}</select></label>
                   <label>Цена, ₽<input name="price" type="number" min="0" max="100000000" step="1" required /></label>
                   <label>Единица<input name="unit" defaultValue="за шт." maxLength="40" required /></label>
+                  <label className="admin-image-upload admin-add-product__wide">
+                    Фото товара
+                    <input key={imageInputKey} name="image" type="file" accept="image/jpeg,image/png,image/webp" onChange={selectProductImage} />
+                  </label>
+                  {imageUrl && (
+                    <div className="admin-image-preview admin-add-product__wide">
+                      <img src={imageUrl} alt="Предпросмотр товара" />
+                      <button type="button" className="text-link" onClick={() => {
+                        setImageUrl("");
+                        setImageInputKey((current) => current + 1);
+                      }}>Убрать фото</button>
+                    </div>
+                  )}
                 </div>
                 <button className="button button--red" type="submit" disabled={busy}>Добавить товар</button>
               </form>

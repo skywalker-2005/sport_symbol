@@ -82,4 +82,25 @@ if (!Number.isInteger(port) || port < 1 || port > 65_535) {
   throw new Error("PORT must be a valid TCP port");
 }
 
-server.listen(port, "0.0.0.0");
+const tunnelMode = process.env.TUNNEL_MODE === "true";
+if (tunnelMode && (process.env.NODE_ENV !== "development" ||
+  process.env.LOCAL_DEV_ADMIN === "true" || !process.env.CORS_ORIGINS?.trim())) {
+  throw new Error("Tunnel mode requires development, LOCAL_DEV_ADMIN=false, and explicit CORS_ORIGINS");
+}
+if (tunnelMode) {
+  let connectionHost;
+  try {
+    connectionHost = new URL(process.env.DATABASE_URL || "").hostname;
+  } catch {
+    throw new Error("Tunnel mode requires a valid local DATABASE_URL");
+  }
+  if (!["localhost", "127.0.0.1", "::1"].includes(connectionHost)) {
+    throw new Error("Tunnel mode can only use a loopback PostgreSQL database");
+  }
+}
+
+const host = tunnelMode ? "127.0.0.1" : "0.0.0.0";
+server.listen(port, host, () => {
+  console.info(`API listening on http://${host}:${port}`);
+  if (tunnelMode) console.info("ngrok tunnel mode enabled; CORS is restricted to CORS_ORIGINS.");
+});

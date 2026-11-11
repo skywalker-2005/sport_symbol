@@ -10,6 +10,7 @@ const localAdmin = {
   email: "admin@localhost.test",
   password: "SimvolLocal-Admin!2026",
 };
+export const localAdminEmail = localAdmin.email;
 
 function isLocalDevelopment() {
   return process.env.NODE_ENV === "development" && process.env.LOCAL_DEV_ADMIN === "true";
@@ -43,7 +44,10 @@ export async function db() {
   if (process.env.LOCAL_DEV_ADMIN === "true" && !isLocalDevelopment()) {
     throw new Error("LOCAL_DEV_ADMIN is only available in development");
   }
-  if (isLocalDevelopment()) {
+  if (process.env.TUNNEL_MODE === "true" && process.env.LOCAL_DEV_ADMIN === "true") {
+    throw new Error("The local dev administrator must be disabled when the backend tunnel is enabled");
+  }
+  if (isLocalDevelopment() && process.env.TUNNEL_MODE !== "true") {
     let databaseHost;
     try {
       databaseHost = new URL(connectionString).hostname;
@@ -77,8 +81,10 @@ export async function db() {
           badge TEXT NOT NULL DEFAULT '',
           visual TEXT NOT NULL DEFAULT 'cup',
           background TEXT NOT NULL DEFAULT 'linear-gradient(145deg,#ede7db,#d6c6ab)',
+          image_url TEXT,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
         CREATE TABLE IF NOT EXISTS cart_items (
           user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           product_id TEXT NOT NULL REFERENCES products(id),
@@ -167,10 +173,10 @@ export function fail(res, status, message) {
   send(res, status, { error: message });
 }
 
-export async function body(req) {
+export async function body(req, maxBytes = 16_384) {
   if (req.body !== undefined) {
     const raw = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : req.body;
-    if (Buffer.byteLength(typeof raw === "string" ? raw : JSON.stringify(raw)) > 16_384) {
+    if (Buffer.byteLength(typeof raw === "string" ? raw : JSON.stringify(raw)) > maxBytes) {
       throw Object.assign(new Error("Слишком большой запрос"), { status: 413 });
     }
     if (typeof raw === "string") {
@@ -189,7 +195,7 @@ export async function body(req) {
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 16_384) throw Object.assign(new Error("Слишком большой запрос"), { status: 413 });
+    if (size > maxBytes) throw Object.assign(new Error("Слишком большой запрос"), { status: 413 });
     chunks.push(chunk);
   }
   try {
@@ -241,12 +247,16 @@ export function setSession(res, user) {
     email: user.email,
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7,
   });
-  const sameSite = process.env.NODE_ENV === "production" ? "None" : "Lax";
+  const sameSite = process.env.NODE_ENV === "production" || process.env.TUNNEL_MODE === "true"
+    ? "None"
+    : "Lax";
   res.setHeader("Set-Cookie", `session=${token}; HttpOnly; Secure; SameSite=${sameSite}; Path=/; Max-Age=604800`);
 }
 
 export function clearSession(res) {
-  const sameSite = process.env.NODE_ENV === "production" ? "None" : "Lax";
+  const sameSite = process.env.NODE_ENV === "production" || process.env.TUNNEL_MODE === "true"
+    ? "None"
+    : "Lax";
   res.setHeader("Set-Cookie", `session=; HttpOnly; Secure; SameSite=${sameSite}; Path=/; Max-Age=0`);
 }
 
@@ -264,6 +274,7 @@ export function getUser(req) {
     if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
     const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
     if (!claims.sub || !claims.exp || claims.exp <= Date.now() / 1000) return null;
+    if (process.env.TUNNEL_MODE === "true" && claims.email === localAdminEmail) return null;
     return { id: claims.sub, email: claims.email, role: claims.role };
   } catch {
     return null;
@@ -308,7 +319,8 @@ export function verifyAuthCodeHash(email, purpose, code, encoded) {
 }
 
 export async function sendAuthCodeEmail(email, code, purpose) {
-  if (isLocalDevelopment()) {
+  if (process.env.NODE_ENV === "development" &&
+    (isLocalDevelopment() || process.env.TUNNEL_MODE === "true")) {
     console.info(`[local email] ${purpose} code for ${email}: ${code}`);
     return true;
   }

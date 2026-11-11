@@ -10,6 +10,7 @@ import {
   fail,
   getPaymentCredentials,
   getUser,
+  localAdminEmail,
   passwordHash,
   refreshPayment,
   requireUser,
@@ -84,6 +85,7 @@ function productShape(row) {
     badge: row.badge,
     visual: row.visual,
     background: row.background,
+    imageUrl: row.image_url,
   };
 }
 
@@ -183,6 +185,9 @@ async function handle(req, res) {
     const data = await body(req);
     const email = emailValue(data.email);
     const password = typeof data.password === "string" ? data.password : "";
+    if (process.env.TUNNEL_MODE === "true" && email === localAdminEmail) {
+      return fail(res, 401, "Неверная почта или пароль");
+    }
     await enforceRateLimit(database, `login:${email}`);
     const result = await database.query(
       "SELECT id, email, password_hash, role, email_verified FROM users WHERE email = $1",
@@ -376,22 +381,29 @@ async function handle(req, res) {
 
   if (path === "admin/products" && method === "POST") {
     if (!await getAdmin(req, res, database)) return;
-    const data = await body(req);
+    const data = await body(req, 2_000_000);
     const name = typeof data.name === "string" ? data.name.trim() : "";
     const description = typeof data.description === "string" ? data.description.trim() : "";
     const category = typeof data.category === "string" ? data.category : "awards";
     const categoryName = typeof data.categoryName === "string" ? data.categoryName.trim() : "";
     const price = data.price;
     const unit = typeof data.unit === "string" ? data.unit.trim() : "за шт.";
+    const imageUrl = typeof data.imageUrl === "string" ? data.imageUrl : null;
+    if (imageUrl !== null) {
+      const imageMatch = imageUrl.match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/);
+      if (!imageMatch || Buffer.from(imageMatch[2], "base64").length > 1_000_000) {
+        return fail(res, 400, "Загрузите изображение JPEG, PNG или WebP размером до 1 МБ после сжатия");
+      }
+    }
     if (!name || name.length > 120 || description.length > 500 ||
       !["cups", "awards", "medals", "plaques", "figures", "bases", "print"].includes(category) || !categoryName ||
       categoryName.length > 80 || !Number.isSafeInteger(price) || price < 0 || price > 100000000 ||
       !unit || unit.length > 40) return fail(res, 400, "Проверьте название, категорию и цену товара");
     const id = `custom-${randomUUID()}`;
     const result = await database.query(
-      `INSERT INTO products (id, name, description, category, category_name, price, unit, badge, visual)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'Новинка','cup') RETURNING *`,
-      [id, name, description, category, categoryName, price, unit],
+      `INSERT INTO products (id, name, description, category, category_name, price, unit, badge, visual, image_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'Новинка','cup',$8) RETURNING *`,
+      [id, name, description, category, categoryName, price, unit, imageUrl],
     );
     return send(res, 201, { product: productShape(result.rows[0]) });
   }

@@ -12,6 +12,7 @@
     "build:layero": "vite build --base=/",
     "start": "node server.js",
     "start:local": "node --env-file=local.env scripts/start-local.js",
+    "start:tunnel": "node --env-file=local.env scripts/start-tunnel.js",
     "start:api": "node render-server.js",
     "preview": "vite preview"
   },

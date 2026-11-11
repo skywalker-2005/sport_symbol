@@ -26,7 +26,9 @@ export default function ProductCard({ product, quantity, onAdd, index }) {
         >
           <UiIcon name={favorite ? "heart-filled" : "heart"} />
         </button>
-        <ProductArtwork type={product.visual} id={product.id} />
+        {product.imageUrl
+          ? <img className="product-card__photo" src={product.imageUrl} alt={product.name} />
+          : <ProductArtwork type={product.visual} id={product.id} />}
       </div>
       <div className="product-card__body">
         <p className="product-card__category">{product.categoryName}</p>

@@ -56,10 +56,9 @@ export default function CartDrawer({
                   className="cart-item__visual"
                   style={{ "--visual-bg": product.background }}
                 >
-                  <ProductArtwork
-                    type={product.visual}
-                    id={`cart-${product.id}`}
-                  />
+                  {product.imageUrl
+                    ? <img className="cart-item__photo" src={product.imageUrl} alt={product.name} />
+                    : <ProductArtwork type={product.visual} id={`cart-${product.id}`} />}
                 </div>
                 <div>
                   <p className="cart-item__name">{product.name}</p>
