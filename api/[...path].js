@@ -99,6 +99,13 @@ async function getAdmin(req, res, database) {
   return user;
 }
 
+function validProductImage(imageUrl) {
+  if (imageUrl === null) return true;
+  if (typeof imageUrl !== "string") return false;
+  const imageMatch = imageUrl.match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/);
+  return Boolean(imageMatch && Buffer.from(imageMatch[2], "base64").length <= 1_000_000);
+}
+
 async function handle(req, res) {
   const url = new URL(req.url, `https://${req.headers.host || "localhost"}`);
   const path = url.pathname.replace(/^\/api\/?/, "").replace(/\/+$/, "");
@@ -388,12 +395,9 @@ async function handle(req, res) {
     const categoryName = typeof data.categoryName === "string" ? data.categoryName.trim() : "";
     const price = data.price;
     const unit = typeof data.unit === "string" ? data.unit.trim() : "за шт.";
-    const imageUrl = typeof data.imageUrl === "string" ? data.imageUrl : null;
-    if (imageUrl !== null) {
-      const imageMatch = imageUrl.match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/);
-      if (!imageMatch || Buffer.from(imageMatch[2], "base64").length > 1_000_000) {
-        return fail(res, 400, "Загрузите изображение JPEG, PNG или WebP размером до 1 МБ после сжатия");
-      }
+    const imageUrl = data.imageUrl === undefined ? null : data.imageUrl;
+    if (!validProductImage(imageUrl)) {
+      return fail(res, 400, "Загрузите изображение JPEG, PNG или WebP размером до 1 МБ после сжатия");
     }
     if (!name || name.length > 120 || description.length > 500 ||
       !["cups", "awards", "medals", "plaques", "figures", "bases", "print"].includes(category) || !categoryName ||
@@ -433,9 +437,28 @@ async function handle(req, res) {
   if (priceMatch && method === "PATCH") {
     if (!await getAdmin(req, res, database)) return;
     const data = await body(req);
-    const price = data.price;
-    if (!Number.isSafeInteger(price) || price < 0 || price > 100000000) return fail(res, 400, "Укажите корректную цену в рублях");
-    const result = await database.query("UPDATE products SET price = $1 WHERE id = $2 RETURNING *", [price, priceMatch[1]]);
+    const updates = [];
+    const values = [];
+    if (Object.hasOwn(data, "price")) {
+      if (!Number.isSafeInteger(data.price) || data.price < 0 || data.price > 100000000) {
+        return fail(res, 400, "Укажите корректную цену в рублях");
+      }
+      values.push(data.price);
+      updates.push(`price = $${values.length}`);
+    }
+    if (Object.hasOwn(data, "imageUrl")) {
+      if (!validProductImage(data.imageUrl)) {
+        return fail(res, 400, "Загрузите изображение JPEG, PNG или WebP размером до 1 МБ после сжатия");
+      }
+      values.push(data.imageUrl);
+      updates.push(`image_url = $${values.length}`);
+    }
+    if (!updates.length) return fail(res, 400, "Не указаны поля для обновления");
+    values.push(priceMatch[1]);
+    const result = await database.query(
+      `UPDATE products SET ${updates.join(", ")} WHERE id = $${values.length} RETURNING *`,
+      values,
+    );
     if (!result.rowCount) return fail(res, 404, "Товар не найден");
     return send(res, 200, { product: productShape(result.rows[0]) });
   }

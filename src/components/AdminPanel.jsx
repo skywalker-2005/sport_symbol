@@ -11,6 +11,35 @@ const tabs = [
   ["payments", "ЮKassa"],
 ];
 
+async function compressProductImage(file) {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    throw new Error("Выберите изображение JPEG, PNG или WebP");
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error("Исходное изображение должно быть не больше 10 МБ");
+  }
+
+  const bitmap = await createImageBitmap(file);
+  try {
+    const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Не удалось обработать изображение");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const compressedImage = canvas.toDataURL("image/jpeg", 0.82);
+    if (compressedImage.length > 1_400_000) {
+      throw new Error("После сжатия изображение должно быть не больше 1 МБ");
+    }
+    return compressedImage;
+  } finally {
+    bitmap.close();
+  }
+}
+
 export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
   const [tab, setTab] = useState("products");
   const [products, setProducts] = useState([]);
@@ -18,9 +47,15 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
   const [orders, setOrders] = useState([]);
   const [paymentSettings, setPaymentSettings] = useState({ configured: false, shopId: "" });
   const [status, setStatus] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imageInputKey, setImageInputKey] = useState(0);
+
+  function showError(message) {
+    setStatus("");
+    setAlertMessage(message);
+  }
 
   useEffect(() => {
     if (!isOpen) return;
@@ -42,7 +77,7 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
           if (active) setPaymentSettings(result);
         }
       } catch (error) {
-        if (active) setStatus(error.message);
+        if (active) showError(error.message);
       }
     };
     load();
@@ -62,7 +97,7 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
       setProducts((current) => current.map((item) => item.id === id ? product : item));
       onProductsChange();
     } catch (error) {
-      setStatus(error.message);
+      showError(error.message);
     } finally {
       setBusy(false);
     }
@@ -78,7 +113,7 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
       onProductsChange();
       setStatus("Товар удален");
     } catch (error) {
-      setStatus(error.message);
+      showError(error.message);
     } finally {
       setBusy(false);
     }
@@ -111,52 +146,55 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
       onProductsChange();
       setStatus("Товар добавлен");
     } catch (error) {
-      setStatus(error.message);
+      showError(error.message);
     } finally {
       setBusy(false);
     }
   }
 
-  async function selectProductImage(event) {
+  async function persistProductImage(product, nextImageUrl) {
+    const { product: updatedProduct } = await apiRequest(`admin/products/${product.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ imageUrl: nextImageUrl }),
+    });
+    setProducts((current) => current.map((item) => item.id === product.id ? updatedProduct : item));
+    onProductsChange();
+  }
+
+  async function selectProductImage(event, product = null) {
     const input = event.currentTarget;
     const file = input.files?.[0];
-    setStatus("");
     if (!file) {
-      setImageUrl("");
-      return;
-    }
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setStatus("Выберите изображение JPEG, PNG или WebP");
-      input.value = "";
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setStatus("Исходное изображение должно быть не больше 10 МБ");
-      input.value = "";
+      if (!product) setImageUrl("");
       return;
     }
 
     setBusy(true);
+    setStatus("");
     try {
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(bitmap.width * scale);
-      canvas.height = Math.round(bitmap.height * scale);
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error("Не удалось обработать изображение");
-      context.fillStyle = "#ffffff";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      bitmap.close();
-      const compressedImage = canvas.toDataURL("image/jpeg", 0.82);
-      if (compressedImage.length > 1_400_000) {
-        throw new Error("После сжатия изображение должно быть не больше 1 МБ");
+      const compressedImage = await compressProductImage(file);
+      if (product) {
+        await persistProductImage(product, compressedImage);
+        setStatus("Фото товара обновлено");
+      } else {
+        setImageUrl(compressedImage);
       }
-      setImageUrl(compressedImage);
     } catch (error) {
-      setStatus(error.message || "Не удалось загрузить изображение");
+      showError(error.message || "Не удалось загрузить изображение");
+    } finally {
+      setBusy(false);
       input.value = "";
+    }
+  }
+
+  async function removeProductImage(product) {
+    setBusy(true);
+    setStatus("");
+    try {
+      await persistProductImage(product, null);
+      setStatus("Фото товара удалено");
+    } catch (error) {
+      showError(error.message);
     } finally {
       setBusy(false);
     }
@@ -177,7 +215,7 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
       formElement.reset();
       setStatus("Настройки ЮKassa сохранены");
     } catch (error) {
-      setStatus(error.message);
+      showError(error.message);
     } finally {
       setBusy(false);
     }
@@ -210,7 +248,17 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
                       {product.imageUrl
                         ? <img className="admin-product__thumb" src={product.imageUrl} alt="" />
                         : null}
-                      <span><b>{product.name}</b><small>{product.categoryName}</small></span>
+                      <span>
+                        <b>{product.name}</b>
+                        <small>{product.categoryName}</small>
+                        <span className="admin-product__image-actions">
+                          <label className="admin-photo-upload">
+                            {product.imageUrl ? "Изменить фото" : "Добавить фото"}
+                            <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} aria-label={`Выбрать фото товара ${product.name}`} onChange={(event) => selectProductImage(event, product)} />
+                          </label>
+                          {product.imageUrl && <button className="text-link admin-remove-photo" type="button" disabled={busy} onClick={() => removeProductImage(product)}>Удалить фото</button>}
+                        </span>
+                      </span>
                     </span>
                     <label className="admin-price">
                       <input key={`${product.id}-${product.price}`} name="price" type="number" min="0" max="100000000" step="1" defaultValue={product.price} required aria-label={`Цена товара ${product.name}`} />
@@ -294,9 +342,18 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
               <p className="admin-help">URL уведомлений в кабинете ЮKassa: <code>{API_BASE_URL || window.location.origin}/api/payments/webhook</code>. Включите события payment.succeeded и payment.canceled.</p>
             </>
           )}
-          <p className={`form-status ${["Товар добавлен", "Товар удален", "Настройки ЮKassa сохранены"].includes(status) ? "form-status--success" : "form-status--error"}`} role="status">{status}</p>
+          <p className={`form-status ${["Товар добавлен", "Товар удален", "Фото товара обновлено", "Фото товара удалено", "Настройки ЮKassa сохранены"].includes(status) ? "form-status--success" : "form-status--error"}`} role="status">{status}</p>
         </div>
       </section>
+      {alertMessage && (
+        <div className="admin-alert-backdrop">
+          <section className="admin-alert" role="alertdialog" aria-modal="true" aria-labelledby="admin-alert-title" aria-describedby="admin-alert-message">
+            <h2 id="admin-alert-title">Не удалось выполнить действие</h2>
+            <p id="admin-alert-message">{alertMessage}</p>
+            <button className="button button--red" type="button" autoFocus onClick={() => setAlertMessage("")}>ОК</button>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
