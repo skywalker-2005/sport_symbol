@@ -52,7 +52,8 @@ const server = createServer((req, res) => {
   const origin = req.headers.origin;
   const requestHost = req.headers["x-forwarded-host"] || req.headers.host;
   const originAllowed = isAllowedOrigin(origin, requestHost, origins);
-  if (origin && !originAllowed) return sendError(res, 403, "Origin is not allowed");
+  if (origin && !originAllowed)
+    return sendError(res, 403, "Origin is not allowed");
 
   if (originAllowed) {
     res.setHeader("Access-Control-Allow-Origin", new URL(origin).origin);
@@ -61,10 +62,13 @@ const server = createServer((req, res) => {
   }
 
   if (req.method === "OPTIONS") {
-    if (origin && !originAllowed) return sendError(res, 403, "Origin is not allowed");
+    if (origin && !originAllowed)
+      return sendError(res, 403, "Origin is not allowed");
     res.writeHead(204, {
-      "Access-Control-Allow-Methods": "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Methods":
+        "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers":
+        "Content-Type, ngrok-skip-browser-warning",
       "Access-Control-Max-Age": "600",
     });
     return res.end();
@@ -83,9 +87,15 @@ if (!Number.isInteger(port) || port < 1 || port > 65_535) {
 }
 
 const tunnelMode = process.env.TUNNEL_MODE === "true";
-if (tunnelMode && (process.env.NODE_ENV !== "development" ||
-  process.env.LOCAL_DEV_ADMIN === "true" || !process.env.CORS_ORIGINS?.trim())) {
-  throw new Error("Tunnel mode requires development, LOCAL_DEV_ADMIN=false, and explicit CORS_ORIGINS");
+if (
+  tunnelMode &&
+  (process.env.NODE_ENV !== "development" ||
+    process.env.LOCAL_DEV_ADMIN === "true" ||
+    !process.env.CORS_ORIGINS?.trim())
+) {
+  throw new Error(
+    "Tunnel mode requires development, LOCAL_DEV_ADMIN=false, and explicit CORS_ORIGINS",
+  );
 }
 if (tunnelMode) {
   let connectionHost;
@@ -102,5 +112,8 @@ if (tunnelMode) {
 const host = tunnelMode ? "127.0.0.1" : "0.0.0.0";
 server.listen(port, host, () => {
   console.info(`API listening on http://${host}:${port}`);
-  if (tunnelMode) console.info("ngrok tunnel mode enabled; CORS is restricted to CORS_ORIGINS.");
+  if (tunnelMode)
+    console.info(
+      "ngrok tunnel mode enabled; CORS is restricted to CORS_ORIGINS.",
+    );
 });
