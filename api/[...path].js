@@ -409,6 +409,27 @@ async function handle(req, res) {
   }
 
   const priceMatch = path.match(/^admin\/products\/([a-z0-9-]+)$/);
+  if (priceMatch && method === "DELETE") {
+    if (!await getAdmin(req, res, database)) return;
+    const client = await database.connect();
+    try {
+      await client.query("BEGIN");
+      const existing = await client.query("SELECT id FROM products WHERE id = $1 FOR UPDATE", [priceMatch[1]]);
+      if (!existing.rowCount) {
+        await client.query("ROLLBACK");
+        return fail(res, 404, "Товар не найден");
+      }
+      await client.query("DELETE FROM cart_items WHERE product_id = $1", [priceMatch[1]]);
+      await client.query("DELETE FROM products WHERE id = $1", [priceMatch[1]]);
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+    return send(res, 200, { ok: true });
+  }
   if (priceMatch && method === "PATCH") {
     if (!await getAdmin(req, res, database)) return;
     const data = await body(req);

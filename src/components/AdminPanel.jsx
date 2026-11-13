@@ -68,6 +68,22 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
     }
   }
 
+  async function deleteProduct(product) {
+    if (!window.confirm(`Удалить товар «${product.name}»?`)) return;
+    setBusy(true);
+    setStatus("");
+    try {
+      await apiRequest(`admin/products/${product.id}`, { method: "DELETE" });
+      setProducts((current) => current.filter((item) => item.id !== product.id));
+      onProductsChange();
+      setStatus("Товар удален");
+    } catch (error) {
+      setStatus(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function addProduct(event) {
     event.preventDefault();
     setBusy(true);
@@ -200,7 +216,10 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
                       <input key={`${product.id}-${product.price}`} name="price" type="number" min="0" max="100000000" step="1" defaultValue={product.price} required aria-label={`Цена товара ${product.name}`} />
                       <span>₽</span>
                     </label>
-                    <button className="button button--red" type="submit" disabled={busy}>Сохранить</button>
+                    <div className="admin-product__actions">
+                      <button className="button button--red" type="submit" disabled={busy}>Сохранить</button>
+                      <button className="button button--delete" type="button" disabled={busy} onClick={() => deleteProduct(product)}>Удалить</button>
+                    </div>
                   </form>
                 ))}
               </div>
@@ -275,7 +294,7 @@ export default function AdminPanel({ isOpen, onClose, onProductsChange }) {
               <p className="admin-help">URL уведомлений в кабинете ЮKassa: <code>{API_BASE_URL || window.location.origin}/api/payments/webhook</code>. Включите события payment.succeeded и payment.canceled.</p>
             </>
           )}
-          <p className="form-status form-status--error" role="status">{status}</p>
+          <p className={`form-status ${["Товар добавлен", "Товар удален", "Настройки ЮKassa сохранены"].includes(status) ? "form-status--success" : "form-status--error"}`} role="status">{status}</p>
         </div>
       </section>
     </div>
